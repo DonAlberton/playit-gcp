@@ -1,28 +1,30 @@
 from models.playlist import Playlist
-from models.track import Track
-import os
+from config import spotify_config
 import json
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+# import os
+# from dotenv import load_dotenv
+# load_dotenv()
 
 class PlaylistRepository:
-    api_url: str = os.getenv("SPOTIFY_API_URL")
+    api_url: str = spotify_config.api_url
     headers: str
 
-    def __init__(self, token):        
+    def __init__(self, token: str):        
         self.headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"            
         }
 
-    def create_playlist(self, playlist_name, user_id: str):
-        data = {
+
+    def create_playlist(self, playlist_name: str, user_id: str, is_public: bool) -> Playlist:
+        # TODO: 
+        data: dict = {
             "name": playlist_name,
-            "description": "First playlist created using Spotify API",
+            "description": "",
             "collaborative": True,
-            "public": True
+            "public": is_public
         }
     
         response = requests.post(
@@ -31,15 +33,16 @@ class PlaylistRepository:
             data=json.dumps(data)
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
 
         json_response = response.json()
 
-        playlist_id = json_response["id"]
+        playlist_id: str = json_response["id"]
 
         return Playlist(playlist_id=playlist_id, name=playlist_name)
 
-    def unfollow_playlist(self, playlist_id: str):
+
+    def unfollow_playlist(self, playlist_id: str) -> None:
         response = requests.delete(
             f"{self.api_url}/playlists/{playlist_id}/followers", 
             headers=self.headers
@@ -47,7 +50,8 @@ class PlaylistRepository:
 
         assert response.status_code == 200
 
-    def add_track(self, playlist_id: str, track_id: str):
+
+    def add_track(self, playlist_id: str, track_id: str) -> None:
         data = {
             "uris":[
                 f"spotify:track:{track_id}"
@@ -60,23 +64,24 @@ class PlaylistRepository:
             data=json.dumps(data)
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
 
 
-    def add_tracks(self, playlist_id: str, tracks: list[str]):
+    def add_tracks(self, playlist_id: str, tracks: list[str]) -> None:
         data = {
             "uris":[
                 f"spotify:track:{track}" for track in tracks
             ]
         }
 
-        reponse = requests.post(
+        response = requests.post(
             f"{self.api_url}/playlists/{playlist_id}/tracks",
             headers=self.headers,
             data=json.dumps(data)
         )
 
-        assert reponse.status_code == 200
+        assert response.status_code == 201
     
+
     def update_token(self, token):
         self.headers["Authorization"] = f"Bearer {token}"
