@@ -3,11 +3,8 @@ from config import spotify_config
 import json
 import requests
 
-# import os
-# from dotenv import load_dotenv
-# load_dotenv()
 
-class PlaylistRepository:
+class SpotifyPlaylistRepository:
     api_url: str = spotify_config.api_url
     headers: str
 
@@ -19,7 +16,6 @@ class PlaylistRepository:
 
 
     def create_playlist(self, playlist_name: str, user_id: str, is_public: bool) -> Playlist:
-        # TODO: 
         data: dict = {
             "name": playlist_name,
             "description": "",
@@ -52,7 +48,7 @@ class PlaylistRepository:
 
 
     def add_track(self, playlist_id: str, track_id: str) -> None:
-        data = {
+        data: dict = {
             "uris":[
                 f"spotify:track:{track_id}"
             ]

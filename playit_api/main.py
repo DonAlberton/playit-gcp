@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Body
 import uvicorn
 from authorization.token_refresh import token_refresh
-from repositories.playlist_repository import PlaylistRepository
-from repositories.track_repository import TrackRepository
+from repositories.audio_streaming.spotify_playlist_repository import SpotifyPlaylistRepository
+from repositories.audio_streaming.spotify_track_repository import SpotifyTrackRepository
 from models.playlist import Playlist
 import asyncio
 
@@ -10,8 +10,8 @@ import asyncio
 # out of the refresh token (which is stored in the .env but does not change)
 token = token_refresh()
 
-playlist_repository = PlaylistRepository(token)
-track_repository = TrackRepository(token)
+playlist_repository = SpotifyPlaylistRepository(token)
+track_repository = SpotifyTrackRepository(token)
 
 app = FastAPI()
 
@@ -20,18 +20,6 @@ app = FastAPI()
 
 # Playlists ids with assigned users ids
 playlist_to_user_ids = {"0eMFYVCMIOuz57wD08kBOm": {}}
-
-# async def update_token():
-#     while True:
-#         await asyncio.sleep(3595)
-#         new_token = token_refresh()
-#         playlist_repository.update_token(new_token)
-#         track_repository.update_token(new_token)
-
-
-# @app.on_event("startup")
-# async def start_background_task():
-#     asyncio.create_task(update_token())
 
 
 @app.post("/playlists")
@@ -100,14 +88,3 @@ def get_playlists_users(playlist_id: str):
 
     if playlist_id in playlist_to_user_ids:
         return playlist_to_user_ids[playlist_id]
-
-
-# async def main():
-#     config = uvicorn.Config(app, host="0.0.0.0", port=80)
-#     server = uvicorn.Server(config)
-
-#     await asyncio.create_task(server.serve())
-
-
-# if __name__ == "__main__":
-#     asyncio.run(main())

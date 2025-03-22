@@ -8,15 +8,14 @@ from urllib.parse import quote
 
 from config import spotify_config
 
-# load_dotenv()
 
-class TrackRepository:
-    api_url: str = spotify_config.api_url # os.getenv("SPOTIFY_API_URL")
+class SpotifyTrackRepository:
+    api_url: str = spotify_config.api_url
     headers: str
 
     def __init__(self, token: str):
         self.headers = {"Authorization": f"Bearer {token}"}
-    
+
 
     def get_user_name(self, user_id: str) -> str:
         response = requests.get(
@@ -31,7 +30,6 @@ class TrackRepository:
         return data["display_name"]
     
 
-    # TODO: Change it to return a list of Tracks
     def get_added_tracks(self, playlist_id: str) -> list[Track]:
         response = requests.get(
             f"{self.api_url}/playlists/{playlist_id}", 
