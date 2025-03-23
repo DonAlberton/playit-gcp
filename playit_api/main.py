@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException
 import uvicorn
 from authorization.token_refresh import token_refresh
+from repositories.audio_streaming.base import TrackRepository, PlaylistRepository
 from repositories.audio_streaming.spotify_playlist_repository import SpotifyPlaylistRepository
 from repositories.audio_streaming.spotify_track_repository import SpotifyTrackRepository
+from repositories.database.firestore_repository import FirestoreRepository
 from models.playlist import Playlist
 import asyncio
 
@@ -10,8 +12,11 @@ import asyncio
 # out of the refresh token (which is stored in the .env but does not change)
 token = token_refresh()
 
-playlist_repository = SpotifyPlaylistRepository(token)
-track_repository = SpotifyTrackRepository(token)
+playlist_repository: PlaylistRepository = SpotifyPlaylistRepository(token)
+track_repository: TrackRepository = SpotifyTrackRepository(token)
+
+# TODO: Complete repository "database_repository: DatabaseRepository = FirestoreRepository()"
+database_repository = FirestoreRepository()
 
 app = FastAPI()
 
@@ -27,6 +32,8 @@ def create_playlist(name: str = Body(...), user_id: str = Body(...), is_public: 
     # TODO: Add is_public to App Gateway microservice
     playlist: Playlist = playlist_repository.create_playlist(name, user_id, is_public)
 
+    # TODO: Add to firestore
+    database_repository.save_playlist_id(playlist.playlist_id)
     playlist_to_user_ids[playlist.playlist_id] = {}
 
     return playlist
@@ -47,7 +54,7 @@ def add_track(playlist_id: str, track_id: str):
 def get_playlist_tracks(playlist_id: str):
     # TODO: Change with Depends
     global playlist_to_user_ids
-
+    print(playlist_to_user_ids)
     # Updates the dictionary of users that put tracks in the playlist
     # when this method is triggered
    
@@ -57,10 +64,25 @@ def get_playlist_tracks(playlist_id: str):
     # TODO: Store playlist_to_user_ids data in Firestore and fetch
     # every time the microservice is restarts
 
+    '''
+    {
+        '0eMFYVCMIOuz57wD08kBOm': {}, 
+        '1DgAnJ4YeHeZJYDBR5ncRa': {'11180277231': 'Alberto Szpejewski'}
+    }
+    '''
+
+    if playlist_id not in playlist_to_user_ids:
+        if not database_repository.playlist_exists(playlist_id):
+            raise HTTPException(status_code=404, detail=f"Playlist id {playlist_id} does not exist")
+        
+        playlist_to_user_ids[playlist_id] = database_repository.get_users_ids(playlist_id)
+
     for track in track_repository.get_added_tracks(playlist_id):
         if track.added_by_id not in playlist_to_user_ids[playlist_id]:
+            # TODO: Make it a single call to update all users at once
             playlist_to_user_ids[playlist_id][track.added_by_id] = track_repository.get_user_name(track.added_by_id)
-            
+            database_repository.save_user_id(playlist_id, track.added_by_id, playlist_to_user_ids[playlist_id][track.added_by_id])
+
     return track_repository.get_added_tracks(playlist_id)
 
 
@@ -88,3 +110,5 @@ def get_playlists_users(playlist_id: str):
 
     if playlist_id in playlist_to_user_ids:
         return playlist_to_user_ids[playlist_id]
+
+    # database_repository.get_users_ids()

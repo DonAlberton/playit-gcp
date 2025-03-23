@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from models.track import Playlist, Track
+from models.track import Track
+from models.playlist import Playlist
 
-class UserRepository(ABC):
+class PlaylistRepository(ABC):
     @abstractmethod
     def create_playlist(self, playlist_name: str, user_id: str, is_public: bool) -> Playlist:
         pass
