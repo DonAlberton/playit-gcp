@@ -2,9 +2,10 @@ from google.cloud import firestore
 
 class FirestoreRepository:
     firestore_client: firestore.Client = firestore.Client()
+    document_name: str = "playlist_user_id"
 
     def playlist_exists(self, playlist_id: str) -> bool:
-        doc_ref = self.firestore_client.collection("playlist_user_id").document(playlist_id)
+        doc_ref = self.firestore_client.collection(self.document_name).document(playlist_id)
         doc = doc_ref.get()
 
         # if not doc.exists:
@@ -12,12 +13,12 @@ class FirestoreRepository:
         return doc.exists
 
     def save_playlist_id(self, playlist_id: str) -> None:
-        doc_ref = self.firestore_client.collection("playlist_user_id").document(playlist_id)
+        doc_ref = self.firestore_client.collection(self.document_name).document(playlist_id)
         doc_ref.set({})
 
 
     def save_user_id(self, playlist_id: str, user_id: str, username: str) -> None:
-        doc_ref = self.firestore_client.collection("playlist_user_id").document(playlist_id)
+        doc_ref = self.firestore_client.collection(self.document_name).document(playlist_id)
         doc_ref.update(
             {user_id: username}
         )
@@ -27,7 +28,7 @@ class FirestoreRepository:
 
 
     def get_users_ids(self, playlist_id: str) -> dict:
-        doc_ref = self.firestore_client.collection("playlist_user_id").document(playlist_id)
+        doc_ref = self.firestore_client.collection(self.document_name).document(playlist_id)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -36,6 +37,15 @@ class FirestoreRepository:
         data = doc.to_dict()
 
         return data
+    
+    def delete_playlist_id(self, playlist_id: str) -> None:
+        self.firestore_client.collection(self.document_name) \
+            .document(playlist_id) \
+            .delete()
+    
+    
+
+        
 
 
 
