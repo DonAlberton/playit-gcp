@@ -7,6 +7,7 @@ import requests
 class SpotifyPlaylistRepository:
     api_url: str = spotify_config.api_url
     headers: str
+    user_id: str = "11180277231"
 
     def __init__(self, token: str):        
         self.headers = {
@@ -15,7 +16,7 @@ class SpotifyPlaylistRepository:
         }
 
 
-    def create_playlist(self, playlist_name: str, user_id: str, is_public: bool) -> Playlist:
+    def create_playlist(self, playlist_name: str, is_public: bool = True) -> Playlist:
         data: dict = {
             "name": playlist_name,
             "description": "",
@@ -24,7 +25,7 @@ class SpotifyPlaylistRepository:
         }
     
         response = requests.post(
-            f"{self.api_url}/users/{user_id}/playlists",
+            f"{self.api_url}/users/{self.user_id}/playlists",
             headers=self.headers,
             data=json.dumps(data)
         )

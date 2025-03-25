@@ -28,9 +28,9 @@ playlist_to_user_ids = {"0eMFYVCMIOuz57wD08kBOm": {}}
 
 
 @app.post("/playlists")
-def create_playlist(name: str = Body(...), user_id: str = Body(...), is_public: bool = Body(True)):
+def create_playlist(name: str = Body(...), is_public: bool = Body(True)):
     # TODO: Add is_public to App Gateway microservice
-    playlist: Playlist = playlist_repository.create_playlist(name, user_id, is_public)
+    playlist: Playlist = playlist_repository.create_playlist(name, is_public)
 
     # TODO: Add to firestore
     database_repository.save_playlist_id(playlist.playlist_id)

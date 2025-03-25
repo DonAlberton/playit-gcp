@@ -4,7 +4,7 @@ from models.playlist import Playlist
 
 class PlaylistRepository(ABC):
     @abstractmethod
-    def create_playlist(self, playlist_name: str, user_id: str, is_public: bool) -> Playlist:
+    def create_playlist(self, playlist_name: str, is_public: bool) -> Playlist:
         pass
 
     @abstractmethod
