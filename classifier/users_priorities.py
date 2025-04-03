@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class UsersPriorities(BaseModel):
-    low: list[str]
-    medium: list[str]
-    high: list[str]
+    low: list[str] = Field(default_factory=list)
+    medium: list[str] = Field(default_factory=list)
+    high: list[str] = Field(default_factory=list)

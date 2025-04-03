@@ -1,131 +1,136 @@
-from fastapi import FastAPI, Body
-import uvicorn 
-
-import redis
+from fastapi import FastAPI
 import requests
-from requests.exceptions import HTTPError, ConnectionError, Timeout
-import asyncio
-
 import json
-
-import os
-from dotenv import load_dotenv
-from pathlib import Path
-
 from users_priorities import UsersPriorities
 
-env_path = Path(".") / ".env"
-load_dotenv(dotenv_path=env_path)
+from google.cloud import firestore, pubsub_v1
+from google.api_core.exceptions import AlreadyExists
+import redis
 
-PLAYIT_URL_BASE = os.getenv("PLAYIT_URL_BASE")
-REDIS_HOST = os.getenv("REDIS_HOST")
-REDIS_PORT = os.getenv("REDIS_PORT")
 
+
+PLAYIT_URL_BASE = "http://127.0.0.1:8002" # os.getenv("PLAYIT_URL_BASE")
+
+REDIS_HOST = "127.0.0.1" # os.getenv("REDIS_HOST")
+REDIS_PORT = 6379 # os.getenv("REDIS_PORT")
 rd = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
+
+
+project_id = "playground-454021"
+publisher: pubsub_v1.PublisherClient = pubsub_v1.PublisherClient()
+
+firestore_client: firestore.Client = firestore.Client()
+document_name: str = "users_priorities"
+
+"""
+playlist_to_users_priorities: dict = {
+    "input_playlist_id_1": {
+        "low": ["user_id_1", "user_id_2"],
+        "medium": ["user_id_3"],
+        "high": ["user_id_4", "user_id_5"]
+    },
+    "input_playlist_id_2": ...
+}
+"""
+playlist_to_users_priorities: dict = {}
+
+def fetch_input_playlist(input_playlist_id: str) -> None:
+    doc_ref = firestore_client.collection(document_name).document(input_playlist_id)
+    doc = doc_ref.get()
+
+    if not doc.exists:
+        raise ValueError(f"Playlist id {input_playlist_id} does not exist")
+    
+    playlist_to_users_priorities[input_playlist_id] = doc.to_dict()[input_playlist_id]
+
+    if input_playlist_id not in input_playlists_to_priorities: 
+        input_playlists_to_priorities[input_playlist_id] = UsersPriorities().model_dump()
+
+
+"""
+input_playlists_to_priorities = {
+    "playlist_id_1": {
+        "high": [],
+        "medium": [],
+        "low": []
+    },
+    "playlist_id_2": ...
+}
+"""
+input_playlists_to_priorities: dict[str, dict] = {}
+
 
 app = FastAPI()
 
-event = asyncio.Event()
+@app.post("/start/{input_playlist_id}")
+async def start_classifier(input_playlist_id: str) -> None:
+    fetch_input_playlist(input_playlist_id)
+    fetch_api(input_playlist_id)
+    push_redis(input_playlist_id)
 
-# TODO: Change it so every user has a priority assigned (now the user is assigned to a priority)
-priorities_assiged = {
-    "low": {"11180277231"},
-    "medium": {"31fg75dmlz25cosa7zgzw4gy6fr4", "pawełgolec"},
-    "high": {"31qvemjqvhkkvdzfmkut24y4lsmy"}
-}
-
-input_playlist_id = "5w7pHgT0XZ4jU69Rq1wPPu" # "6EPla6iVCb3AlBizZaVyjt"
-
-@app.post("/start")
-async def start_classifier():
-    event.set()
-    asyncio.create_task(pull_push_loop(event))
-
-@app.post("/stop")
-async def stop_classifier():
-    event.clear()
-
-@app.post("/playlists")
-def set_input_playlist(input_playlist: str = Body(...)):
-    global input_playlist_id # Change not to use global variable (Depends on fast api feature instead)
-    input_playlist_id = input_playlist
-
-@app.get("/playlist")
-def get_playlist():
-    return input_playlist_id
 
 @app.put("/priorities")
-def set_users_priorities(users_priorities: UsersPriorities):
-    global priorities_assiged # Change not to use global variable (Depends on fast api feature instead)
-    priorities_assiged = users_priorities.model_dump()
+def set_users_priorities(input_playlist_id: str, users_priorities: UsersPriorities) -> None:
+    
+    def create_pubsub_topics(input_playlist_id: str) -> None:
+        priorities = {"low", "medium", "high"}
+        topic_name_template = f"projects/{project_id}/topics"
+        
+        try:
+            for priority in priorities:
+                publisher.create_topic(name=f"{topic_name_template}/{priority}-{input_playlist_id}")
+        except AlreadyExists as e:
+            print(e)
 
-@app.get("/priorities")
-def get_users_priorities():
-    return priorities_assiged
 
-headers = { "Content-Type": "application/json" }
+    input_playlists_to_priorities[input_playlist_id] = users_priorities.model_dump()
+    doc_ref = firestore_client.collection(document_name).document(input_playlist_id)
 
-queues = {
-    "high": [],
-    "medium": [],
-    "low": []
-}
+    doc = doc_ref.get()
 
-# TODO: Change sync requests to async
-def fetch_api():
-    try:
-        response = requests.get(f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks")
-        response.raise_for_status()
+    if not doc.exists:
+        doc_ref.set({})
+        create_pubsub_topics(input_playlist_id)
 
-        data = json.loads(response.content)
+    doc_ref.update({input_playlist_id: users_priorities.model_dump()})
 
-        tracks_ids = []
 
-        for track in data:
-            user_id = track["added_by_id"]
-            
-            for priority, users_id  in priorities_assiged.items():
-                if user_id in users_id:
-                    queues[priority].append(track["track_id"])
-                    tracks_ids.append(track["track_id"])
+def fetch_api(input_playlist_id: str) -> None:
+    queues = input_playlists_to_priorities[input_playlist_id]
+    headers = { "Content-Type": "application/json" }
 
-        response = requests.delete(f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks", headers=headers, data=json.dumps(tracks_ids))
-        # response.raise_for_status()
+    response = requests.get(f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks")
 
-    except HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
-    except ConnectionError as conn_err:
-        print(f"Connection error occurred: {conn_err}")
-    except Timeout as timeout_err:
-        print(f"Request timed out: {timeout_err}")
-    except Exception as err:
-        print(f"An error occurred: {err}")
+    assert response.status_code == 200
 
-# TODO: Change sync redis to async
-def push_redis():
+    data = json.loads(response.content)
+
+    tracks_ids = []
+    priorities_assiged = playlist_to_users_priorities[input_playlist_id]
+
+    for track in data:
+        user_id = track["added_by_id"]
+
+        for priority, users_id  in priorities_assiged.items():
+            if user_id in users_id:
+                queues[priority].append(track["track_id"])
+                tracks_ids.append(track["track_id"])
+
+    response = requests.delete(f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks", headers=headers, data=json.dumps(tracks_ids))
+    
+    assert response.status_code == 200
+
+
+def push_redis(input_playlist_id: str) -> None:
+    queues = input_playlists_to_priorities[input_playlist_id]
+
     with rd.pipeline() as pipe:
         for priority, queue in queues.items():
             if queue:
-                pipe.rpush(priority, *queue)
+                pipe.rpush(f"{input_playlist_id}:{priority}", *queue)
                 queue.clear()
 
         pipe.execute()
 
-async def pull_push_loop(event):
-    while event.is_set():
-        fetch_api()
-        # print("Fetched!")
-        push_redis()
-        # print("Pushed!")
-        await asyncio.sleep(30)
-
-async def main():
-    config = uvicorn.Config(app, host="0.0.0.0", port=80)
-    server = uvicorn.Server(config)
-
-    await asyncio.create_task(server.serve())
-
-
-# TODO: Change to main()
-if __name__ == "__main__":
-    asyncio.run(main())
+def push_pubsub_gcp(input_playlist_id: str) -> None:
+    pass
