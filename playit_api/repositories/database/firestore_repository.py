@@ -1,6 +1,7 @@
 from google.cloud import firestore
+from .base import DatabaseRepository
 
-class FirestoreRepository:
+class FirestoreRepository(DatabaseRepository):
     firestore_client: firestore.Client = firestore.Client()
     document_name: str = "playlist_user_id"
 
@@ -8,9 +9,8 @@ class FirestoreRepository:
         doc_ref = self.firestore_client.collection(self.document_name).document(playlist_id)
         doc = doc_ref.get()
 
-        # if not doc.exists:
-
         return doc.exists
+    
 
     def save_playlist_id(self, playlist_id: str) -> None:
         doc_ref = self.firestore_client.collection(self.document_name).document(playlist_id)
@@ -22,9 +22,6 @@ class FirestoreRepository:
         doc_ref.update(
             {user_id: username}
         )
-        # doc_ref.update(
-        #     {"users_ids": firestore.ArrayUnion([user_id])}
-        # )
 
 
     def get_users_ids(self, playlist_id: str) -> dict:
@@ -38,16 +35,12 @@ class FirestoreRepository:
 
         return data
     
+
     def delete_playlist_id(self, playlist_id: str) -> None:
         self.firestore_client.collection(self.document_name) \
             .document(playlist_id) \
             .delete()
     
-    
-
-        
-
-
 
 if __name__ == "__main__":
     firestore_repository = FirestoreRepository()
