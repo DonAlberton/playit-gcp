@@ -99,7 +99,7 @@ class FirestoreClient:
     def update_users_priorities(self, playlist_id: str, users_priorities: UsersByPriorities) -> None:
         doc_ref = self.collection.document(playlist_id)
 
-        doc_ref.update(users_priorities.model_dump())
+        doc_ref.set(users_priorities.model_dump())
 
 
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     print(firestore_client.get_users_priorities(playlist_id))
 
     users_priorities = UsersByPriorities(**{"high": ["11180277231"], "low": [], "medium": ["31qvemjqvhkkvdzfmkut24y4lsmy"]})
-    firestore_client.update_users_priorities(playlist_id, users_priorities)
+    firestore_client.update_users_priorities("test-test-test", users_priorities)
 
     print(firestore_client.get_users_priorities(playlist_id))
 

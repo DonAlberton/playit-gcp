@@ -15,17 +15,9 @@ token = token_refresh()
 
 playlist_repository: PlaylistRepository = SpotifyPlaylistRepository(token)
 track_repository: TrackRepository = SpotifyTrackRepository(token)
-
-# TODO: Complete repository "database_repository: DatabaseRepository = FirestoreRepository()"
 database_repository: DatabaseRepository = FirestoreRepository()
 
 app = FastAPI()
-
-# Playlists ids with assigned users ids
-# playlist_to_user_ids: dict = {
-#     'playlist_id_1': {}, 
-#     'playlist_id_2': {'user_id_1': 'username_1'}
-# }
 
 
 @app.post("/playlists")

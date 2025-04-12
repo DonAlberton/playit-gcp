@@ -2,7 +2,7 @@ from models.playlist import Playlist
 from config import spotify_config
 import json
 import requests
-
+from requests.exceptions import HTTPError
 
 class SpotifyPlaylistRepository:
     api_url: str = spotify_config.api_url
@@ -23,29 +23,34 @@ class SpotifyPlaylistRepository:
             "collaborative": True,
             "public": is_public
         }
-    
-        response = requests.post(
-            f"{self.api_url}/users/{self.user_id}/playlists",
-            headers=self.headers,
-            data=json.dumps(data)
-        )
 
-        assert response.status_code == 201
+        try:    
+            response = requests.post(
+                f"{self.api_url}/users/{self.user_id}/playlists",
+                headers=self.headers,
+                data=json.dumps(data)
+            )
 
-        json_response = response.json()
+            json_response = response.json()
 
-        playlist_id: str = json_response["id"]
+            playlist_id: str = json_response["id"]
 
-        return Playlist(playlist_id=playlist_id, name=playlist_name)
+            return Playlist(playlist_id=playlist_id, name=playlist_name)
+        
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
 
 
     def unfollow_playlist(self, playlist_id: str) -> None:
-        response = requests.delete(
-            f"{self.api_url}/playlists/{playlist_id}/followers", 
-            headers=self.headers
-        )
+        try:
+            response = requests.delete(
+                f"{self.api_url}/playlists/{playlist_id}/followers", 
+                headers=self.headers
+            )
 
-        assert response.status_code == 200
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
+        
 
 
     def add_track(self, playlist_id: str, track_id: str) -> None:
@@ -55,13 +60,15 @@ class SpotifyPlaylistRepository:
             ]
         }
 
-        response = requests.post(
-            f"{self.api_url}/playlists/{playlist_id}/tracks", 
-            headers=self.headers, 
-            data=json.dumps(data)
-        )
+        try:
+            response = requests.post(
+                f"{self.api_url}/playlists/{playlist_id}/tracks", 
+                headers=self.headers, 
+                data=json.dumps(data)
+            )
 
-        assert response.status_code == 201
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
 
 
     def add_tracks(self, playlist_id: str, tracks: list[str]) -> None:
@@ -71,13 +78,16 @@ class SpotifyPlaylistRepository:
             ]
         }
 
-        response = requests.post(
-            f"{self.api_url}/playlists/{playlist_id}/tracks",
-            headers=self.headers,
-            data=json.dumps(data)
-        )
+        try:
+            response = requests.post(
+                f"{self.api_url}/playlists/{playlist_id}/tracks",
+                headers=self.headers,
+                data=json.dumps(data)
+            )
+            response.raise_for_status()
 
-        assert response.status_code == 201
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
     
 
     def update_token(self, token):

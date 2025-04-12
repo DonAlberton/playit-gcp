@@ -1,10 +1,8 @@
-from typing import Generator
 from models.track import Track
-import os
 import json
 import requests
 from urllib.parse import quote
-
+from requests.exceptions import HTTPError
 from config import spotify_config
 
 
@@ -17,47 +15,51 @@ class SpotifyTrackRepository:
 
 
     def get_user_name(self, user_id: str) -> str:
-        response = requests.get(
-            f"{self.api_url}/users/{quote(quote(user_id))}", 
-            headers=self.headers
-        )
+        try:
+            response = requests.get(
+                f"{self.api_url}/users/{quote(quote(user_id))}", 
+                headers=self.headers
+            )
+            response.raise_for_status()
 
-        assert response.status_code == 200
-                
-        data = response.json()
+            data = response.json()
 
-        return data["display_name"]
-    
+            return data["display_name"]
+        
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
+
 
     def get_added_tracks(self, playlist_id: str) -> list[Track]:
-        response = requests.get(
-            f"{self.api_url}/playlists/{playlist_id}", 
-            headers=self.headers
-        )
-
-        assert response.status_code == 200
-    
-        data = response.json()
-
-        tracks: list[Track] = []
-
-        for track in data["tracks"]["items"]:
-            track_id: str = track["track"]["id"]
-            # track_name: str = track["track"]["name"]
-
-            user_url: str = track["added_by"]["external_urls"]["spotify"]
-
-            user_id: str = ""
-            i = len(user_url) - 1
+        try:
+            response = requests.get(
+                f"{self.api_url}/playlists/{playlist_id}", 
+                headers=self.headers
+            )
+            response.raise_for_status()
         
-            while user_url[i] != "/":
-                user_id = user_url[i] + user_id
-                i -= 1
+            data = response.json()
 
-            tracks.append(Track(track_id, user_id))
+            tracks: list[Track] = []
 
-        return tracks
-            # yield Track(track_id, user_id)
+            for track in data["tracks"]["items"]:
+                track_id: str = track["track"]["id"]
+
+                user_url: str = track["added_by"]["external_urls"]["spotify"]
+
+                user_id: str = ""
+                i = len(user_url) - 1
+            
+                while user_url[i] != "/":
+                    user_id = user_url[i] + user_id
+                    i -= 1
+
+                tracks.append(Track(track_id, user_id))
+
+            return tracks
+        
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
 
 
     def delete_tracks(self, playlist_id: str, tracks_ids: list[str]) -> None:
@@ -69,9 +71,16 @@ class SpotifyTrackRepository:
             ]
         }
 
-        response = requests.delete(f"{self.api_url}/playlists/{playlist_id}/tracks", headers=self.headers, data=json.dumps(data))
+        try:
+            response = requests.delete(
+                f"{self.api_url}/playlists/{playlist_id}/tracks", 
+                headers=self.headers, 
+                data=json.dumps(data)
+            )
+            response.raise_for_status()
 
-        assert response.status_code == 200
+        except HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
 
         
     def update_token(self, token) -> None:

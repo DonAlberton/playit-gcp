@@ -40,6 +40,10 @@ class FirestoreRepository(DatabaseRepository):
         self.firestore_client.collection(self.document_name) \
             .document(playlist_id) \
             .delete()
+        
+        self.firestore_client.collection(self.document_name) \
+            .document(playlist_id) \
+            .delete()
     
 
 if __name__ == "__main__":

@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-requests
-pydantic
-python-dotenv
-urllib3
-
-pydantic-settings
-google-cloud-firestore

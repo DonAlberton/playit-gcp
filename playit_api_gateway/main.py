@@ -26,13 +26,13 @@ def test():
     return "test"
 
 @app.post("/create-session")
-def create_session(input_playlist_name: str = Body(...), user_id: str = Body(...)):
+def create_session(input_playlist_name: str = Body(...)):
         
     playlists = {}
 
     data = {
         "name": input_playlist_name,
-        "user_id": user_id
+        "is_public": True
     }
 
     try:
@@ -54,6 +54,7 @@ def create_session(input_playlist_name: str = Body(...), user_id: str = Body(...
 
     try:
         data.update({"name": f"{input_playlist_name}-output"})
+        data.update({"is_public": False})
         
         response = requests.post(
             f"{PLAYIT_URL_BASE}/playlists", 

@@ -3,6 +3,7 @@ import requests
 import json
 from gcp import PubsubPublisherClient, PubsubSubscriberClient, FirestoreClient
 from models import UsersByPriorities, Priorities
+from requests.exceptions import HTTPError
 
 PLAYIT_URL_BASE = "http://127.0.0.1:8000" # os.getenv("PLAYIT_URL_BASE")
 
@@ -21,13 +22,11 @@ async def start_classifier(input_playlist_id: str) -> None:
     publisher.push_queues_messages(input_playlist_id, classified)
 
 
-@app.put("/priorities")
+@app.put("/priorities/{intput_playlist_id}")
 def set_users_priorities(input_playlist_id: str, users_priorities: UsersByPriorities) -> None:
     
     if not firestore_client.does_playlist_exist(input_playlist_id):
-        firestore_client.create_empty_document(input_playlist_id)
         publisher.create_topics(input_playlist_id)
-
         subscriber: PubsubSubscriberClient = PubsubSubscriberClient()
         subscriber.create_subscriptions(input_playlist_id)
 
@@ -35,22 +34,26 @@ def set_users_priorities(input_playlist_id: str, users_priorities: UsersByPriori
 
 
 def fetch_tracks(input_playlist_id: str) -> dict:
-    response = requests.get(f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks")
-    assert response.status_code == 200
+    try:
+        response = requests.get(f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks")
+        response.raise_for_status()
 
-    data = json.loads(response.content)
+        data = json.loads(response.content)
 
-    tracks_ids = [track_data["track_id"] for track_data in data]
+        tracks_ids = [track_data["track_id"] for track_data in data]
 
-    headers = { "Content-Type": "application/json" }
-    response = requests.delete(
-        f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks",
-        headers=headers, 
-        data=json.dumps(tracks_ids)
-    )
-    assert response.status_code == 200
+        headers = { "Content-Type": "application/json" }
+        response = requests.delete(
+            f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks",
+            headers=headers, 
+            data=json.dumps(tracks_ids)
+        )
+        response.raise_for_status()
 
-    return data
+        return data
+
+    except HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
 
 
 def classify_tracks(data: dict, users_priorities: UsersByPriorities) -> Priorities:

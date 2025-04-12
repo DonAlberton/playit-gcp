@@ -14,6 +14,7 @@ high:<playlist-id-1>, low:<playlist-id-2>, ...
         * Classifier - priorities_assiged, input_playlist_id, queues 
         * Scheduler - output_playlist_id
 4. Make the output playlist private, so no unwanted user can access it.
+5. Change classifier class from Priorities to QueuePriorities
 5. Add traces to the application
 6. Do not let starting multiple tasks on /start endpoint both on classifier and scheduler
 7. Change apps port to 8000
