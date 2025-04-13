@@ -6,11 +6,15 @@ import datetime
 from google.protobuf import timestamp_pb2
 
 
-class PubsubSubscriberClient:
+class PubsubSubscriberClient(BaseModel):
     project_id: str = "playground-454021"
     subscriber: pubsub_v1.SubscriberClient = pubsub_v1.SubscriberClient()
     priorities: list[str] = ["low", "medium", "high"]   
     subscription_name_template: str = f"projects/{project_id}/subscriptions"
+
+    class Config:
+        arbitrary_types_allowed = True
+
 
     def _pull_subscription_tracks(self, subscription_path: str, weight: int) -> list[str]:
         response = self.subscriber.pull(
@@ -60,6 +64,9 @@ class FirestoreClient:
     document_name: str = "queues_weights"
     collection: firestore.Client.collection = firestore_client.collection(document_name)
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
     def get_queue_weights(self, playlist_id: str) -> QueueWeights:
         doc_ref = self.collection.document(playlist_id)
@@ -95,7 +102,8 @@ class TasksClient(BaseModel):
     project_id: str = "playground-454021"
     delay: int = 30
     client: tasks_v2.CloudTasksClient = tasks_v2.CloudTasksClient()
-    url: str = "http://127.0.0.1:8000/start"
+    retry_url: str = "http://127.0.0.1:8000"
+    retry_endpoint: str = f"{retry_url}/start"
 
     class Config:
         arbitrary_types_allowed = True
@@ -112,7 +120,7 @@ class TasksClient(BaseModel):
         task = {
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
-                "url": self.url,
+                "url": self.retry_endpoint,
                 "headers": {"Content-type": "application/json"},
                 "body": body,
             },
