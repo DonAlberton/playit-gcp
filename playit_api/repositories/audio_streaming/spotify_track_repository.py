@@ -4,7 +4,7 @@ import requests
 from urllib.parse import quote
 from requests.exceptions import HTTPError
 from config import spotify_config
-
+from fastapi import HTTPException
 
 class SpotifyTrackRepository:
     api_url: str = spotify_config.api_url
@@ -63,6 +63,9 @@ class SpotifyTrackRepository:
 
 
     def delete_tracks(self, playlist_id: str, tracks_ids: list[str]) -> None:
+        if not tracks_ids:
+            return
+        
         data: dict = {
             "tracks": [
                 {
@@ -81,7 +84,7 @@ class SpotifyTrackRepository:
 
         except HTTPError as http_err:
             print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
-
+            # raise HTTPException(status_code=response.status_code, detail=http_err)
         
     def update_token(self, token) -> None:
         self.headers["Authorization"] = f"Bearer {token}"

@@ -1,14 +1,20 @@
 from fastapi import FastAPI
 import requests
 import json
-from gcp import PubsubPublisherClient, PubsubSubscriberClient, FirestoreClient
+from gcp import PubsubPublisherClient, PubsubSubscriberClient, FirestoreClient, TasksClient
 from models import UsersByPriorities, Priorities
 from requests.exceptions import HTTPError
+from config import gcp_settings, playit_settings
 
-PLAYIT_URL_BASE = "http://127.0.0.1:8000" # os.getenv("PLAYIT_URL_BASE")
 
-publisher: PubsubPublisherClient = PubsubPublisherClient()
 firestore_client: FirestoreClient = FirestoreClient()
+publisher: PubsubPublisherClient = PubsubPublisherClient(project_id=gcp_settings.project_id)
+task_client: TasksClient = TasksClient(
+    project_id=gcp_settings.project_id,
+    location=gcp_settings.cloudtask_location,
+    queue_id=gcp_settings.queue_id,
+    retry_url=gcp_settings.classifier_retry_url
+)
 
 
 app = FastAPI()
@@ -18,8 +24,8 @@ async def start_classifier(input_playlist_id: str) -> None:
     users_priorities: UsersByPriorities = firestore_client.get_users_priorities(input_playlist_id)
     tracks: dict = fetch_tracks(input_playlist_id)
     classified: Priorities = classify_tracks(tracks, users_priorities)
-
     publisher.push_queues_messages(input_playlist_id, classified)
+    # task_client.push_classifier_reprocessing(input_playlist_id)
 
 
 @app.put("/priorities/{intput_playlist_id}")
@@ -35,7 +41,7 @@ def set_users_priorities(input_playlist_id: str, users_priorities: UsersByPriori
 
 def fetch_tracks(input_playlist_id: str) -> dict:
     try:
-        response = requests.get(f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks")
+        response = requests.get(f"{playit_settings.url}/playlists/{input_playlist_id}/tracks")
         response.raise_for_status()
 
         data = json.loads(response.content)
@@ -44,7 +50,7 @@ def fetch_tracks(input_playlist_id: str) -> dict:
 
         headers = { "Content-Type": "application/json" }
         response = requests.delete(
-            f"{PLAYIT_URL_BASE}/playlists/{input_playlist_id}/tracks",
+            f"{playit_settings.url}/playlists/{input_playlist_id}/tracks",
             headers=headers, 
             data=json.dumps(tracks_ids)
         )
@@ -56,12 +62,12 @@ def fetch_tracks(input_playlist_id: str) -> dict:
         print(f"HTTP error occurred: {http_err} - Status code: {response.status_code if response else 'No response'}")
 
 
-def classify_tracks(data: dict, users_priorities: UsersByPriorities) -> Priorities:
+def classify_tracks(tracks: dict, users_priorities: UsersByPriorities) -> Priorities:
     queues = Priorities()
 
     users_dict = users_priorities.model_dump()
 
-    for track in data:
+    for track in tracks:
         user_id = track["added_by_id"]
         track_id = track["track_id"]
 

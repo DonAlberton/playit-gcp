@@ -1,7 +1,0 @@
-fastapi==0.103.1
-uvicorn==0.23.2
-requests==2.25.1
-redis==5.0.8
-pydantic==2.3.0
-google-cloud-firestore
-google-cloud-pubsub

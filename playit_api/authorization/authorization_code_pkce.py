@@ -5,13 +5,14 @@ from urllib.parse import urlparse, parse_qs
 import json
 from dotenv import load_dotenv
 import os
+from config import spotify_config
 
 load_dotenv()
 
 # Spotify client details
-api_url = os.getenv("SPOTIFY_AUTHENTICATION_URL")
-client_id = os.getenv("CLIENT_ID")
-redirect_uri = os.getenv("REDIRECT_URL")
+api_url = spotify_config.authentication_url # os.getenv("SPOTIFY_AUTHENTICATION_URL")
+client_id = spotify_config.client_id # os.getenv("CLIENT_ID")
+redirect_uri = spotify_config.redirect_url # os.getenv("REDIRECT_URL")
 scope = 'playlist-modify-private playlist-modify-public'
 
 def generate_random_string(length: int):

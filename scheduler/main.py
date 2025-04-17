@@ -6,7 +6,6 @@ import json
 from gcp import *
 from config import playit_settings, gcp_settings
 
-app = FastAPI()
 
 firestore_client: FirestoreClient = FirestoreClient()
 subsciber: PubsubSubscriberClient = PubsubSubscriberClient(project_id=gcp_settings.project_id)
@@ -16,6 +15,9 @@ task_client: TasksClient = TasksClient(
     project_id=gcp_settings.project_id,
     retry_url=gcp_settings.scheduler_retry_url
 )
+
+
+app = FastAPI()
 
 # TODO: Change POST to PUT on App Gateway
 # TODO: Change /priority to /weights on App Gateway
@@ -29,6 +31,8 @@ async def start_scheduler(input_playlist_id: str, start_scheduler_request: Start
     queue_weights: QueueWeights = firestore_client.get_queue_weights(input_playlist_id)
     output_tracks_ids: list[str] = subsciber.pull_tracks(input_playlist_id, queue_weights)
     push_api(start_scheduler_request.output_playlist_id, output_tracks_ids)
+    task_client.push_scheduler_reprocessing(input_playlist_id, start_scheduler_request.model_dump_json())
+
 
 
 def push_api(playlist_id: str, tracks_ids: list[str]) -> None:

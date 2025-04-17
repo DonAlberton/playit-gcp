@@ -1,5 +1,5 @@
 from google.cloud import firestore, pubsub_v1, tasks_v2
-from models import QueueWeights, StartSchedulerRequest
+from models import QueueWeights
 from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel
 import datetime
@@ -97,18 +97,22 @@ class FirestoreClient:
 
 
 class TasksClient(BaseModel):
-    queue_id: str = "test-task-1"
+    queue_id: str = ""
     location: str = "europe-central2" # Warsaw
     project_id: str = "playground-454021"
-    delay: int = 30
+    delay: int = 35
     client: tasks_v2.CloudTasksClient = tasks_v2.CloudTasksClient()
-    retry_url: str = "http://127.0.0.1:8000"
-    retry_endpoint: str = f"{retry_url}/start"
+    retry_url: str = ""
+    retry_endpoint: str = ""
 
     class Config:
         arbitrary_types_allowed = True
 
-    def push_scheduler_reprocessing(self, message: str):
+    def model_post_init(self, __context) -> None:
+        self.retry_endpoint = f"{self.retry_url}/start"
+
+
+    def push_scheduler_reprocessing(self, playlist_id: str, message: str):
         parent = self.client.queue_path(self.project_id, self.location, self.queue_id)
 
         body: bytes = message.encode()
@@ -120,7 +124,7 @@ class TasksClient(BaseModel):
         task = {
             "http_request": {
                 "http_method": tasks_v2.HttpMethod.POST,
-                "url": self.retry_endpoint,
+                "url": f"{self.retry_endpoint}/{playlist_id}",
                 "headers": {"Content-type": "application/json"},
                 "body": body,
             },
@@ -128,7 +132,7 @@ class TasksClient(BaseModel):
         }
 
         response = self.client.create_task(parent=parent, task=task)
-        print(f"Task created: {response.name}")
+        # print(f"Task created: {response.name}")
 
 
 if __name__ == "__main__":

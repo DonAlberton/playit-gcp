@@ -4,16 +4,16 @@ import os
 from pathlib import Path
 import requests
 from requests.exceptions import HTTPError, ConnectionError, Timeout
-
+from config import spotify_config
 
 env_path = Path(".") / ".env"
 load_dotenv(dotenv_path=env_path)
 
 load_dotenv()
 
-client_id = os.getenv("CLIENT_ID")
-client_secret = os.getenv("CLIENT_SECRET")
-refresh_token = os.getenv("SPOTIFY_REFRESH_TOKEN")
+client_id = spotify_config.client_id # os.getenv("CLIENT_ID")
+client_secret = spotify_config.client_secret # os.getenv("CLIENT_SECRET")
+refresh_token = spotify_config.refresh_token # os.getenv("SPOTIFY_REFRESH_TOKEN")
 
 url = "https://accounts.spotify.com/api/token"
 

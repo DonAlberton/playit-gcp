@@ -7,7 +7,7 @@ from requests.exceptions import HTTPError
 class SpotifyPlaylistRepository:
     api_url: str = spotify_config.api_url
     headers: str
-    user_id: str = "11180277231"
+    user_id: str = spotify_config.user_id #"11180277231"
 
     def __init__(self, token: str):        
         self.headers = {

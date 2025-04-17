@@ -9,16 +9,14 @@ from dotenv import load_dotenv, set_key
 from pathlib import Path
 import os
 import base64
+from config import spotify_config
 
-env_path = Path(".") / ".env"
-
-load_dotenv(dotenv_path=env_path)
 
 # Spotify client details
-api_url = os.getenv("SPOTIFY_AUTHENTICATION_URL")
-client_id = os.getenv("CLIENT_ID")
-redirect_uri = os.getenv("REDIRECT_URL")
-client_secret = os.getenv("CLIENT_SECRET")
+api_url = spotify_config.api_url # os.getenv("SPOTIFY_AUTHENTICATION_URL")
+client_id = spotify_config.client_id # os.getenv("CLIENT_ID")
+redirect_uri = spotify_config.redirect_url # os.getenv("REDIRECT_URL")
+client_secret = spotify_config.client_secret # os.getenv("CLIENT_SECRET")
 auth_url = "https://accounts.spotify.com/authorize"
 
 scope = 'playlist-modify-private playlist-modify-public'
@@ -83,8 +81,8 @@ if authorization_code:
 
     response_data = response.json()
 
-    set_key(dotenv_path=env_path, key_to_set="SPOTIFY_ACCESS_TOKEN", value_to_set=response_data['access_token'])
-    set_key(dotenv_path=env_path, key_to_set="SPOTIFY_REFRESH_TOKEN", value_to_set=response_data['refresh_token'])
+    # set_key(dotenv_path=env_path, key_to_set="SPOTIFY_ACCESS_TOKEN", value_to_set=response_data['access_token'])
+    # set_key(dotenv_path=env_path, key_to_set="SPOTIFY_REFRESH_TOKEN", value_to_set=response_data['refresh_token'])
 
 else:
     print("Authorization code was not received.")
