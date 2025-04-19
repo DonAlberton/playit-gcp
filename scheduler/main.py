@@ -5,6 +5,7 @@ from requests.exceptions import HTTPError
 import json
 from gcp import *
 from config import playit_settings, gcp_settings
+from fastapi.responses import JSONResponse
 
 
 firestore_client: FirestoreClient = FirestoreClient()
@@ -24,10 +25,21 @@ app = FastAPI()
 @app.put("/weights/{input_playlist_id}")
 async def update_queue_weights(input_playlist_id: str, queue_weights: QueueWeights) -> None:
     firestore_client.update_queue_weights(input_playlist_id, queue_weights)
-    
 
-@app.post("/start/{input_playlist_id}")
+
+@app.put("/status/{input_playlist_id}")
+async def set_playlist_readiness(input_playlist_id: str, readiness_status: bool = Body(...)) -> None:
+    firestore_client.set_taskqueue_readiness(input_playlist_id, readiness_status)
+
+
+@app.post("/process/{input_playlist_id}")
 async def start_scheduler(input_playlist_id: str, start_scheduler_request: StartSchedulerRequest) -> None:
+    if not firestore_client.check_taskqueue_readiness(input_playlist_id):
+        return JSONResponse(
+            status_code=409,
+            content={"message": f"Processing status for {input_playlist_id} is set to False"}
+        )
+
     queue_weights: QueueWeights = firestore_client.get_queue_weights(input_playlist_id)
     output_tracks_ids: list[str] = subsciber.pull_tracks(input_playlist_id, queue_weights)
     push_api(start_scheduler_request.output_playlist_id, output_tracks_ids)

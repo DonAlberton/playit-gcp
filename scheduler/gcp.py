@@ -1,5 +1,5 @@
 from google.cloud import firestore, pubsub_v1, tasks_v2
-from models import QueueWeights
+from models import QueueWeights, StopSchedulerRequest
 from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel
 import datetime
@@ -95,6 +95,29 @@ class FirestoreClient:
 
         doc_ref.set(queue_weights.model_dump())
 
+    def check_taskqueue_readiness(self, playlist_id: str) -> bool:
+        document_name: str = "taskqueue_status"
+        collection: firestore.Client.collection = self.firestore_client.collection(document_name)
+
+        doc_ref = collection.document(playlist_id)
+
+        if not doc_ref.get().exists:
+            doc_ref.set({"is_ready": True})
+            return True
+        
+        return doc_ref.get().to_dict()["is_ready"]
+
+
+    def set_taskqueue_readiness(self, playlist_id: str, status: bool) -> None:
+        document_name: str = "taskqueue_status"
+        collection: firestore.Client.collection = self.firestore_client.collection(document_name)
+
+        doc_ref = collection.document(playlist_id)
+
+        doc_ref.set({"is_ready": status})
+
+        
+
 
 class TasksClient(BaseModel):
     queue_id: str = ""
@@ -132,62 +155,18 @@ class TasksClient(BaseModel):
         }
 
         response = self.client.create_task(parent=parent, task=task)
-        # print(f"Task created: {response.name}")
+
 
 
 if __name__ == "__main__":
-    task_client = TasksClient(queue_id="test-task-queue", url="http://172.104.153.64/")
-    task_client.push_scheduler_reprocessing("manialukens")
-    # subsciber = PubsubSubscriberClient()
+    id = "123-123-123"
 
-    # weights = {
-    #     "high": 3,
-    #     "medium": 2,
-    #     "low": 1
-    # }
-
-    # queue_weights = QueueWeights(**weights)
-
-    # print(subsciber.pull_tracks("0z7gjg85ySD5VXg3bldGt7", queue_weights))
-
-    # pass
-    # import time
-    # playlist_id = "2elIaOB0fCHjcSABzQpfLD"
-    
-    # publisher_client = PubsubPublisherClient()
-    # subscriber_client = PubsubSubscriberClient()
-    # firestore_client = FirestoreClient()
-
-    # print(firestore_client.get_users_priorities(playlist_id))
-
-    # users_priorities = UsersByPriorities(**{"high": ["11180277231"], "low": [], "medium": ["31qvemjqvhkkvdzfmkut24y4lsmy"]})
-    # firestore_client.update_users_priorities(playlist_id, users_priorities)
-
-    # print(firestore_client.get_users_priorities(playlist_id))
+    firestore_client = FirestoreClient()
+    firestore_client.set_taskqueue_readiness(id, True)
 
 
+    print(firestore_client.check_taskqueue_readiness(id))
 
-    # print("Async")
-    # start = time.time()
-    # publisher_client.create_topics(playlist_id)
-    # print(f"Topics creation processing time: {time.time() - start}s")
+    firestore_client.set_taskqueue_readiness(id, False)
 
-    # start = time.time()
-    # subscriber_client.create_subscriptions(playlist_id)
-    # print(f"Subscriber creation processing time: {time.time() - start}s")
-    # print("---")
-
-    # priorities = ["low", "medium", "high"]
-    # print("Sync")
-    # start = time.time()
-    # for priority in priorities:
-    #     publisher_client._create_topic(playlist_id+"-test", priority)
-    # # publisher_client.create_topics(playlist_id)
-    # print(f"Topics creation processing time: {time.time() - start}s")
-
-    # start = time.time()
-    # # subscriber_client.create_subscriptions(playlist_id)
-    # for priority in priorities:
-    #     subscriber_client._create_subscription(playlist_id+"-test", priority)
-    # print(f"Subscriber creation processing time: {time.time() - start}s")
-    # print("---")
+    print(firestore_client.check_taskqueue_readiness(id))
