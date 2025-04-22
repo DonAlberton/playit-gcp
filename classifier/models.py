@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-
+from typing import Optional
 
 class Priorities(BaseModel):
     low: list[str] = Field(default_factory=list)
@@ -26,6 +26,9 @@ class PlaylistToUsersPriorities(BaseModel):
     Each user in the playlist is assigned to a specific priority 
     """
     playlists: dict[str, UsersByPriorities] = Field(default_factory=dict)
+
+class StartClassifierRequest(BaseModel):
+    trigger_mode: str 
 
 
 if __name__ == "__main__":

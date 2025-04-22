@@ -27,24 +27,47 @@ async def update_queue_weights(input_playlist_id: str, queue_weights: QueueWeigh
     firestore_client.update_queue_weights(input_playlist_id, queue_weights)
 
 
-@app.put("/status/{input_playlist_id}")
-async def set_playlist_readiness(input_playlist_id: str, readiness_status: bool = Body(...)) -> None:
-    firestore_client.set_taskqueue_readiness(input_playlist_id, readiness_status)
-
-
-@app.post("/process/{input_playlist_id}")
+@app.post("/start/{input_playlist_id}")
 async def start_scheduler(input_playlist_id: str, start_scheduler_request: StartSchedulerRequest) -> None:
-    if not firestore_client.check_taskqueue_readiness(input_playlist_id):
+    if start_scheduler_request.trigger_mode == "manual":
+        if not firestore_client.check_taskqueue_readiness(input_playlist_id):
+            firestore_client.set_taskqueue_readiness(input_playlist_id, True)
+            queue_weights: QueueWeights = firestore_client.get_queue_weights(input_playlist_id)
+            output_tracks_ids: list[str] = subsciber.pull_tracks(input_playlist_id, queue_weights)
+            push_api(start_scheduler_request.output_playlist_id, output_tracks_ids)
+            start_scheduler_request.trigger_mode = "automatic"
+            task_client.push_scheduler_reprocessing(input_playlist_id, start_scheduler_request.model_dump_json())
+
+            return JSONResponse(
+                status_code=201,
+                content={"message": f"{input_playlist_id} processing started"}
+            )
+
         return JSONResponse(
             status_code=409,
-            content={"message": f"Processing status for {input_playlist_id} is set to False"}
+            content={"message": f"{input_playlist_id} is already processing"}
+        )
+    
+    if not firestore_client.check_taskqueue_readiness(input_playlist_id):
+        return JSONResponse(
+            status_code=200,
+            content={"message": f"{input_playlist_id} processing flag is set to false"}
         )
 
     queue_weights: QueueWeights = firestore_client.get_queue_weights(input_playlist_id)
     output_tracks_ids: list[str] = subsciber.pull_tracks(input_playlist_id, queue_weights)
     push_api(start_scheduler_request.output_playlist_id, output_tracks_ids)
     task_client.push_scheduler_reprocessing(input_playlist_id, start_scheduler_request.model_dump_json())
+    
+    return JSONResponse(
+        status_code=200,
+        content={"message": f"{input_playlist_id} processing"}
+    )
 
+
+@app.post("/stop/{input_playlist_id}")
+def stop_scheduler(input_playlist_id: str):
+    firestore_client.set_taskqueue_readiness(input_playlist_id, False)
 
 
 def push_api(playlist_id: str, tracks_ids: list[str]) -> None:

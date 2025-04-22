@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 
 class QueueWeights(BaseModel):
     high: int = 3
@@ -15,7 +15,8 @@ class QueuePriorities(BaseModel):
 
 class StartSchedulerRequest(BaseModel):
     output_playlist_id: Optional[str] = None
-    process_asset_flag: bool = True
+    trigger_mode: str 
+
 
 class StopSchedulerRequest(BaseModel):
     process_asset_flag: bool = False

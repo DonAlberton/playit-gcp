@@ -113,6 +113,27 @@ class FirestoreClient:
         doc_ref = self.collection.document(playlist_id)
 
         doc_ref.set(users_priorities.model_dump())
+    
+    def set_taskqueue_readiness(self, playlist_id: str, status: bool) -> None:
+        document_name: str = "taskqueue_status"
+        collection: firestore.Client.collection = self.firestore_client.collection(document_name)
+
+        doc_ref = collection.document(playlist_id)
+
+        doc_ref.set({"is_ready": status})
+
+
+    def check_taskqueue_readiness(self, playlist_id: str) -> bool:
+        document_name: str = "taskqueue_status"
+        collection: firestore.Client.collection = self.firestore_client.collection(document_name)
+
+        doc_ref = collection.document(playlist_id)
+
+        if not doc_ref.get().exists:
+            # doc_ref.set({"is_ready": True})
+            return False
+        
+        return doc_ref.get().to_dict()["is_ready"]
 
 
 class TasksClient(BaseModel):
@@ -131,10 +152,10 @@ class TasksClient(BaseModel):
         self.retry_endpoint = f"{self.retry_url}/start"
 
 
-    def push_classifier_reprocessing(self, playlist_id: str):
+    def push_classifier_reprocessing(self, playlist_id: str, message: str):
         parent = self.client.queue_path(self.project_id, self.location, self.queue_id)
 
-        # body: bytes = message.encode()
+        body: bytes = message.encode()
 
         scheduled_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=self.delay)
         timestamp = timestamp_pb2.Timestamp() 
@@ -145,12 +166,13 @@ class TasksClient(BaseModel):
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": f"{self.retry_endpoint}/{playlist_id}",
                 "headers": {"Content-type": "application/json"},
-                # "body": body,
+                "body": body,
             },
             "schedule_time": timestamp 
         }
 
         response = self.client.create_task(parent=parent, task=task)
+
 
 
 if __name__ == "__main__":

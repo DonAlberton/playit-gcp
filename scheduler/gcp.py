@@ -95,18 +95,6 @@ class FirestoreClient:
 
         doc_ref.set(queue_weights.model_dump())
 
-    def check_taskqueue_readiness(self, playlist_id: str) -> bool:
-        document_name: str = "taskqueue_status"
-        collection: firestore.Client.collection = self.firestore_client.collection(document_name)
-
-        doc_ref = collection.document(playlist_id)
-
-        if not doc_ref.get().exists:
-            doc_ref.set({"is_ready": True})
-            return True
-        
-        return doc_ref.get().to_dict()["is_ready"]
-
 
     def set_taskqueue_readiness(self, playlist_id: str, status: bool) -> None:
         document_name: str = "taskqueue_status"
@@ -116,7 +104,19 @@ class FirestoreClient:
 
         doc_ref.set({"is_ready": status})
 
+
+    def check_taskqueue_readiness(self, playlist_id: str) -> bool:
+        document_name: str = "taskqueue_status"
+        collection: firestore.Client.collection = self.firestore_client.collection(document_name)
+
+        doc_ref = collection.document(playlist_id)
+
+        if not doc_ref.get().exists:
+            # doc_ref.set({"is_ready": True})
+            return False
         
+        return doc_ref.get().to_dict()["is_ready"]
+       
 
 
 class TasksClient(BaseModel):

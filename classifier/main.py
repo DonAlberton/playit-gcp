@@ -2,10 +2,10 @@ from fastapi import FastAPI
 import requests
 import json
 from gcp import PubsubPublisherClient, PubsubSubscriberClient, FirestoreClient, TasksClient
-from models import UsersByPriorities, Priorities
+from models import UsersByPriorities, Priorities, StartClassifierRequest
 from requests.exceptions import HTTPError
 from config import gcp_settings, playit_settings
-
+from fastapi.responses import JSONResponse
 
 firestore_client: FirestoreClient = FirestoreClient()
 publisher: PubsubPublisherClient = PubsubPublisherClient(project_id=gcp_settings.project_id)
@@ -20,15 +20,46 @@ task_client: TasksClient = TasksClient(
 app = FastAPI()
 
 @app.post("/start/{input_playlist_id}")
-async def start_classifier(input_playlist_id: str) -> None:
+async def start_classifier(input_playlist_id: str, start_classifier_request: StartClassifierRequest) -> None:
+    if start_classifier_request.trigger_mode == "manual":
+        if not firestore_client.check_taskqueue_readiness(input_playlist_id):
+            firestore_client.set_taskqueue_readiness(input_playlist_id, True)
+            users_priorities: UsersByPriorities = firestore_client.get_users_priorities(input_playlist_id)
+            tracks: dict = fetch_tracks(input_playlist_id)
+            classified: Priorities = classify_tracks(tracks, users_priorities)
+            publisher.push_queues_messages(input_playlist_id, classified)
+            start_classifier_request.trigger_mode = "automatic"
+            task_client.push_classifier_reprocessing(input_playlist_id, start_classifier_request.model_dump_json())
+            
+            return JSONResponse(
+                status_code=201,
+                content={"message": f"{input_playlist_id} processing started"}
+            )
+
+        return JSONResponse(
+            status_code=409,
+            content={"message": f"{input_playlist_id} is already processing"}
+        )
+
+    if not firestore_client.check_taskqueue_readiness(input_playlist_id):
+        return JSONResponse(
+            status_code=200,
+            content={"message": f"{input_playlist_id} processing flag is set to false"}
+        )    
+    
     users_priorities: UsersByPriorities = firestore_client.get_users_priorities(input_playlist_id)
     tracks: dict = fetch_tracks(input_playlist_id)
     classified: Priorities = classify_tracks(tracks, users_priorities)
     publisher.push_queues_messages(input_playlist_id, classified)
-    # task_client.push_classifier_reprocessing(input_playlist_id)
+    task_client.push_classifier_reprocessing(input_playlist_id, start_classifier_request.model_dump_json())
+    
+    return JSONResponse(
+        status_code=200,
+        content={"message": f"{input_playlist_id} processing"}
+    )
 
 
-@app.put("/priorities/{intput_playlist_id}")
+@app.put("/priorities/{input_playlist_id}")
 def set_users_priorities(input_playlist_id: str, users_priorities: UsersByPriorities) -> None:
     
     if not firestore_client.does_playlist_exist(input_playlist_id):
@@ -37,6 +68,11 @@ def set_users_priorities(input_playlist_id: str, users_priorities: UsersByPriori
         subscriber.create_subscriptions(input_playlist_id)
 
     firestore_client.update_users_priorities(input_playlist_id, users_priorities)
+
+
+@app.post("/stop/{input_playlist_id}")
+def stop_classifier(input_playlist_id: str):
+    firestore_client.set_taskqueue_readiness(input_playlist_id, False)
 
 
 def fetch_tracks(input_playlist_id: str) -> dict:
