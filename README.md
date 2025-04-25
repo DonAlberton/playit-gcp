@@ -11,7 +11,7 @@ session. If not removed, there will still be some tracks from other sessions
 
 4. CI/CD
 
-5. Subscription create problem
+5. Change all to internal communication (except gateway)
 
 Copyright (c) 2025 Alberto Szpejewski. All Rights Reserved.
 Ten projekt jest udostępniany wyłącznie w celu recenzji. Jakiekolwiek użycie, modyfikacja lub rozpowszechnianie wymaga pisemnej zgody autora.
