@@ -101,15 +101,21 @@ def fetch_tracks(input_playlist_id: str) -> dict:
 def classify_tracks(tracks: dict, users_priorities: UsersByPriorities) -> Priorities:
     queues = Priorities()
 
-    users_dict = users_priorities.model_dump()
+    users_dict: dict = users_priorities.model_dump()
+    
+    tracks_with_no_priorities: list[str] = []
 
     for track in tracks:
         user_id = track["added_by_id"]
         track_id = track["track_id"]
 
+        tracks_with_no_priorities.append(track_id)
         for priority, users_id in users_dict.items():
             if user_id in users_id:
                 getattr(queues, priority).append(track_id)
+                tracks_with_no_priorities.remove(track_id)
+
+    queues.low.extend(tracks_with_no_priorities)
 
     return queues
 
