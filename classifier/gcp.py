@@ -13,6 +13,9 @@ class PubsubSubscriberClient(BaseModel):
     subscription_name_template: str = ""
     topic_name_template: str = ""
 
+    class Config:
+        arbitrary_types_allowed = True
+
     def model_post_init(self, __context) -> None:
         self.subscription_name_template = f"projects/{self.project_id}/subscriptions"
         self.topic_name_template = f"projects/{self.project_id}/topics"
