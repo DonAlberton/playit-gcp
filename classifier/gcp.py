@@ -6,7 +6,7 @@ import datetime
 from google.protobuf import timestamp_pb2
 
 
-class PubsubSubscriberClient:
+class PubsubSubscriberClient(BaseModel):
     project_id: str = "playground-454021"
     subscriber: pubsub_v1.SubscriberClient = pubsub_v1.SubscriberClient()
     priorities: list[str] = ["low", "medium", "high"]   
@@ -104,7 +104,6 @@ class FirestoreClient:
 
         return doc_ref.get().exists
 
-    
     def create_empty_document(self, playlist_id: str) -> None:
         doc_ref = self.collection.document(playlist_id)
         doc_ref.set({})
@@ -121,7 +120,6 @@ class FirestoreClient:
         doc_ref = collection.document(playlist_id)
 
         doc_ref.set({"is_ready": status})
-
 
     def check_taskqueue_readiness(self, playlist_id: str) -> bool:
         document_name: str = "taskqueue_status"
