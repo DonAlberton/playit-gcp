@@ -13,12 +13,12 @@ app = FastAPI()
 headers = { "Content-Type": "application/json" }
 
 @app.post("/create-session")
-def create_session(input_playlist_name: str = Body(...)):
+def create_session(create_session_request: CreateSessionRequest):
         
     playlists_ids = {}
 
     data = {
-        "name": input_playlist_name,
+        "name": create_session_request.input_playlist_name,
         "is_public": True
     }
 
@@ -34,7 +34,7 @@ def create_session(input_playlist_name: str = Body(...)):
         
         
         data = {
-            "name": f"{input_playlist_name}-output",
+            "name": f"{create_session_request.input_playlist_name}-output",
             "is_public": False
         }
         

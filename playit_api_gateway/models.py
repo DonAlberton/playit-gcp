@@ -20,3 +20,6 @@ class StartClassifierRequest(BaseModel):
 class StartSchedulerRequest(BaseModel):
     output_playlist_id: Optional[str] = None
     trigger_mode: str
+
+class CreateSessionRequest(BaseModel):
+    input_playlist_name: str
