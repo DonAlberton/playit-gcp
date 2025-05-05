@@ -1,11 +1,15 @@
 from fastapi import FastAPI, Body
-from models import QueueWeights, StartSchedulerRequest
+from fastapi.responses import JSONResponse
 import requests
 from requests.exceptions import HTTPError
 import json
-from gcp import *
+
+from gcp.pubsub.subscriber_client import PubsubSubscriberClient
+from gcp.firestore.firestore_client import FirestoreClient
+from gcp.cloud_task.tasks_client import TasksClient
+from models.queue_weights import QueueWeights
+from models.start_scheduler_request import StartSchedulerRequest
 from config import playit_settings, gcp_settings
-from fastapi.responses import JSONResponse
 
 
 firestore_client: FirestoreClient = FirestoreClient()
@@ -20,8 +24,7 @@ task_client: TasksClient = TasksClient(
 
 app = FastAPI()
 
-# TODO: Change POST to PUT on App Gateway
-# TODO: Change /priority to /weights on App Gateway
+
 @app.put("/weights/{input_playlist_id}")
 async def update_queue_weights(input_playlist_id: str, queue_weights: QueueWeights) -> None:
     firestore_client.update_queue_weights(input_playlist_id, queue_weights)
