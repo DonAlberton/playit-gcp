@@ -1,5 +1,5 @@
-from classifier.models import UsersByPriorities
-from google.cloud.firestore import firestore
+from models.users_by_priorities import UsersByPriorities
+from google.cloud import firestore
 
 
 class FirestoreClient:

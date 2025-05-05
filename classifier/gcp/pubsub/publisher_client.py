@@ -1,5 +1,5 @@
-from classifier.models import Priorities
-from google.cloud.pubsub_v1 import pubsub_v1
+from models.priorities import Priorities
+from google.cloud import pubsub_v1
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
 

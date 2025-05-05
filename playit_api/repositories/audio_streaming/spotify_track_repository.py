@@ -4,7 +4,6 @@ import requests
 from urllib.parse import quote
 from requests.exceptions import HTTPError
 from config import spotify_config
-from fastapi import HTTPException
 
 class SpotifyTrackRepository:
     api_url: str = spotify_config.api_url

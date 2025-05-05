@@ -1,5 +1,5 @@
-from scheduler.models.queue_weights import QueueWeights
-from google.cloud.firestore import firestore
+from models.queue_weights import QueueWeights
+from google.cloud import firestore
 
 
 class FirestoreClient:
