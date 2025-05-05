@@ -1,9 +1,13 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
 import requests
 from requests.exceptions import HTTPError
 import json
-from models import *
-from gcp import *
+from gcp.firestore_client import FirestoreClient
+from models.create_session_request import CreateSessionRequest
+from models.set_queues_weights_request import SetQueuesWeightsRequest
+from models.set_users_priorities_request import SetUsersPrioritiesRequest
+from models.start_classifier_request import StartClassifierRequest
+from models.start_scheduler_request import StartSchedulerRequest
 from config import playit_settings
 
 firestore_client = FirestoreClient()
