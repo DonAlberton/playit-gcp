@@ -1,11 +1,17 @@
 from fastapi import FastAPI
-import requests
-import json
-from gcp import PubsubPublisherClient, PubsubSubscriberClient, FirestoreClient, TasksClient
-from models import UsersByPriorities, Priorities, StartClassifierRequest
-from requests.exceptions import HTTPError
-from config import gcp_settings, playit_settings
 from fastapi.responses import JSONResponse
+import requests
+from requests.exceptions import HTTPError
+import json
+
+from gcp.cloud_tasks.tasks_client import TasksClient
+from gcp.firestore.firestore_client import FirestoreClient
+from gcp.pubsub.subscriber_client import PubsubSubscriberClient
+from gcp.pubsub.publisher_client import PubsubPublisherClient
+from models.users_by_priorities import UsersByPriorities
+from models.priorities import Priorities
+from models.start_classifier_request import StartClassifierRequest
+from config import gcp_settings, playit_settings
 
 firestore_client: FirestoreClient = FirestoreClient()
 publisher: PubsubPublisherClient = PubsubPublisherClient(project_id=gcp_settings.project_id)
